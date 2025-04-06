@@ -1,7 +1,8 @@
 ﻿using DSharpPlus.Entities;
 using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
-using DSharpPlus.SlashCommands.EventArgs;
+using PokemartUSABot.Models;
+using System.Text;
 
 namespace PokemartUSABot
 {
@@ -16,7 +17,7 @@ namespace PokemartUSABot
         //public async Task PokemartUSABotCommand(
         //    InteractionContext ctx,
         //    [Option("Product", "Enter Product Name")] string product,
-        //    [Choice("Pokémon", "Pokémon")][Choice("Magic The Gathering", "Magic The Gathering")][Choice("Flesh & Blood", "Flesh & Blood")][Choice("Grand Archive", "Grand Archive")][Choice("holoLive", "holoLive")][Choice("Lorcana", "Lorcana")][Choice("Riftbound", "Riftbound")][Choice("Sorcery", "Sorcery")][Choice("Star Wars Unlimited", "Star Wars Unlimited")][Choice("Weiss Schwarz", "Weiss Schwarz")][Choice("Bandai", "Bandai")][Choice("Supplies", "Supplies")] string ip,
+        //    [Choice("Pokémon", "Pokémon")][Choice("Magic The Gathering", "Magic The Gathering")][Choice("Flesh & Blood", "Flesh & Blood")][Choice("Grand Archive", "Grand Archive")][Choice("holoLive", "holoLive")][Choice("Lorcana", "Lorcana")][Choice("Riftbound", "Riftbound")][Choice("Sorcery", "Sorcery")][Choice("Star Wars Unlimited", "Star Wars Unlimited")][Choice("Weiß Schwarz", "Weiß Schwarz")][Choice("Bandai", "Bandai")][Choice("Supplies", "Supplies")] string ip,
         //    [Choice("Southern Hobby (Distro #1)", 1)][Choice("Magazine Exchange (Distro #2)", 2)][Choice("PHD Games (Distro #3)", 3)][Choice("Madal (Distro #4)", 4)][Choice("GTS Distribution (Distro #5)", 5)] ushort distro,
         //    [Option("DM", "Direct Message Results?")] bool dm, 
         //    [Option("Mobile", "Print results in a mobile friendly format")] bool mobile = false)
@@ -25,6 +26,46 @@ namespace PokemartUSABot
         //    ctx.SlashCommandsExtension.SlashCommandErrored += OnErrorOccured;
 
         //}
+
+        [SlashCommand("product", "Get current list of products for a given IP and distro")]
+        [SlashCooldown(1, 5, SlashCooldownBucketType.User)]
+        public async Task ListPokemartUSADistroProductCommand(
+            InteractionContext ctx,
+            [Option("ip", "Select IP")]
+            [Choice("Bandai", "Bandai")]
+            [Choice("Dragon Ball", "Dragon Ball")]
+            [Choice("Digimon", "Digimon")]
+            [Choice("Flesh & Blood", "Flesh & Blood")]
+            [Choice("Grand Archive", "Grand Archive")]
+            [Choice("Gundam", "Gundam")]
+            [Choice("holoLive", "holoLive")]
+            [Choice("Lorcana", "Lorcana")]
+            [Choice("Magic The Gathering", "Magic The Gathering")]
+            [Choice("One Piece", "One Piece")]
+            [Choice("Pokémon", "Pokémon")]
+            [Choice("Riftbound", "Riftbound")]
+            [Choice("Sorcery", "Sorcery")]
+            [Choice("Star Wars Unlimited", "Star Wars Unlimited")]
+            [Choice("Union Arena", "Union Arena")]
+            [Choice("Weiß Schwarz", "Weiß Schwarz")] string ip,
+
+            [Option("distro", "Select Distributor")]
+            [Choice("Southern Hobby (Distro #1)", 1)]
+            [Choice("Magazine Exchange (Distro #2)", 2)]
+            [Choice("PHD Games (Distro #3)", 3)]
+            [Choice("Madal (Distro #4)", 4)]
+            [Choice("GTS Distribution (Distro #5)", 5)] long distro)
+        {
+            await ctx.DeferAsync();
+            IEnumerable<ProductRecord> productList = await DistroProductSelector.FetchProductsAsync(DistroProductSelector.GetSheetUri(ip, "English", distro), ip, distro);
+
+            DiscordMessageBuilder resultMessage = new DiscordMessageBuilder()
+                            .WithContent($">>> **Distro #{distro} {ip} Product**")
+                            .AddFile("Results.txt", new MemoryStream(Encoding.UTF8.GetBytes(DistroProductSelector.GetResultsAsAsciiTable(productList))));
+
+            await ctx.EditResponseAsync(
+                new DiscordWebhookBuilder(resultMessage));
+        }
 
         [SlashCommand("distro", "List current distros supported in the program and their links")]
         [SlashCooldown(1, 30, SlashCooldownBucketType.User)]

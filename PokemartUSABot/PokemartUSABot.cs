@@ -16,7 +16,7 @@ namespace PokemartUSABot
         internal static DiscordEmbedBuilder? CrashEmbed;
         internal static DiscordEmbedBuilder? CooldownEmbed;
         internal static DiscordEmbedBuilder? HelpEmbed;
-        internal static DiscordEmbedBuilder? NoResponseEmbed;
+        internal static DiscordEmbedBuilder? WarningEmbed;
         internal static DiscordEmbedBuilder? DistroEmbed;
         internal static DiscordEmbedBuilder? SheetsEmbed;
 
@@ -24,6 +24,7 @@ namespace PokemartUSABot
         private static PokemartUSABotConfig? PokemartUSABotConfig;
         internal const string NAME = "PokemartUSA";
         internal static readonly DiscordColor COLOR = new DiscordColor("#FEC634");
+        internal static ILogger<BaseDiscordClient> Logger { get; private set; }
 
         static async Task Main()
         {
@@ -45,6 +46,7 @@ namespace PokemartUSABot
                 AutoReconnect = true
             };
             Client = new DiscordClient(clientConfig);
+            Logger = Client!.Logger;
 
             Client.ComponentInteractionCreated += async (s, e) =>
             {
@@ -59,7 +61,7 @@ namespace PokemartUSABot
 
             var Command = Client.UseSlashCommands();
             Command.RegisterCommands<PokemartUSABotCommands>();
-            Command.SlashCommandErrored += async (s, e) => { await OnErrorOccured(e); };
+            Command.SlashCommandErrored += async (s, e) => { await OnErrorOccured(s, e); };
 
 
             await Client.ConnectAsync();
@@ -71,7 +73,7 @@ namespace PokemartUSABot
         {
             CrashEmbed = new DiscordEmbedBuilder
             {
-                Description = $"### :bangbang: PokemartUSABot Crashed! Try Again",
+                Title = $":bangbang: PokemartUSABot Crashed! Try Again",
                 Color = PokemartUSABot.COLOR,
                 Timestamp = DateTimeOffset.UtcNow
             }.WithFooter(PokemartUSABot.NAME, PokemartUSABot.Client.CurrentUser.AvatarUrl);
@@ -97,12 +99,13 @@ namespace PokemartUSABot
              .WithThumbnail(PokemartUSABot.Client.CurrentUser.AvatarUrl)
              .AddField("FAQ", "[Google Doc](<https://docs.google.com/document/d/1K3hmfo1EzLazjQz2-_zFdsqjz-NQnz7POPyAORxO_Wo/edit?tab=t.0#heading=h.45c7ytkyi1ft>)")
              .AddField("Commands",
-             $"**/{NAME.ToLower()} distro** - Outputs the list of distros currently supported by the wholesale program" +
+             $"**/{NAME.ToLower()} product** - Outputs the list of products for a given IP at a specific distro\n" +
+             $"**/{NAME.ToLower()} distro** - Outputs the list of distros currently supported by the wholesale program\n" +
              $"**/{NAME.ToLower()} sheets** - Outputs the list of google spreadsheets used in the wholesale program");
 
-            NoResponseEmbed = new DiscordEmbedBuilder
+            WarningEmbed = new DiscordEmbedBuilder
             {
-                Description = "### :warning: Took to long to Respond! Try Again",
+                Title = ":warning: Warning",
                 Color = PokemartUSABot.COLOR,
                 Timestamp = DateTimeOffset.UtcNow
             }.WithFooter(PokemartUSABot.NAME, PokemartUSABot.Client.CurrentUser.AvatarUrl);
@@ -130,7 +133,7 @@ namespace PokemartUSABot
             }.WithFooter(PokemartUSABot.NAME, PokemartUSABot.Client.CurrentUser.AvatarUrl);
         }
 
-        private static async Task OnErrorOccured(SlashCommandErrorEventArgs e)
+        private static async Task OnErrorOccured(SlashCommandsExtension s, SlashCommandErrorEventArgs e)
         {
             if (e.Exception is SlashExecutionChecksFailedException)
             {
@@ -142,15 +145,22 @@ namespace PokemartUSABot
                         new DiscordMessageBuilder()
                         .AddEmbed(CooldownEmbed!.WithDescription($"### :hourglass_flowing_sand: PokemartUSABot Command on Cooldown, Wait {(rawTime.Minutes != 0 ? timeLeft.Insert(0, $"{rawTime.Minutes}m ") : timeLeft)}"))));
             }
-            else
+            else if (e.Exception is DistroConfigurationException)
             {
-                // PokemartUSABot.Client.Logger.LogError(e.Exception, "PokemartUSABot Slash Command Error -> \"{}\"", e.Exception.Message);
+                Logger.LogError(e.Exception, "PokemartUSABot Slash Command Error -> \"{}\"", e.Exception.Message);
                 await e.Context.EditResponseAsync(
                     new DiscordWebhookBuilder(
                         new DiscordMessageBuilder()
-                            .AddEmbed(CrashEmbed)));
+                            .AddEmbed(WarningEmbed!.WithDescription($"**{e.Exception.Message}**"))));
             }
-            throw e.Exception;
+            else
+            {
+                Logger.LogError(e.Exception, "PokemartUSABot Slash Command Error -> \"{}\"", e.Exception.Message);
+                await e.Context.EditResponseAsync(
+                    new DiscordWebhookBuilder(
+                        new DiscordMessageBuilder()
+                            .AddEmbed(CrashEmbed!)));
+            }
         }
     }
 }
