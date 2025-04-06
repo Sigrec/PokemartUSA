@@ -238,15 +238,15 @@ namespace PokemartUSABot
 
         public static string GetResultsAsAsciiTable(IEnumerable<ProductRecord> productList)
         {
-            int NameLength = HEADERS[0].Length, priceLength = HEADERS[1].Length, statusLength = HEADERS[2].Length, allocationDueLength = HEADERS[3].Length, streetDateLength = HEADERS[4].Length;
+            int nameLength = HEADERS[0].Length, priceLength = HEADERS[1].Length, statusLength = HEADERS[2].Length, allocationDueLength = HEADERS[3].Length, streetDateLength = HEADERS[4].Length;
 
             foreach (ProductRecord result in productList)
             {
-                NameLength = Math.Max(NameLength, result.Name.Length);
+                nameLength = Math.Max(nameLength, result.Name.Length);
                 priceLength = Math.Max(priceLength, result.Price.Length);
                 statusLength = Math.Max(statusLength, result.Status.Length);
             }
-            string NameBars = "━".PadRight(NameLength + 2, '━');
+            string NameBars = "━".PadRight(nameLength + 2, '━');
             string priceBars = "━".PadRight(priceLength + 2, '━');
             string statusBars = "━".PadRight(statusLength + 2, '━');
             string allocationDueBars = "━".PadRight(allocationDueLength + 2, '━');
@@ -255,12 +255,12 @@ namespace PokemartUSABot
             StringBuilder stringBuilder = new StringBuilder();
 
             stringBuilder.AppendFormat("┏{0}┳{1}┳{2}┳{3}┳{4}┓", NameBars, priceBars, statusBars, allocationDueBars, streetDateBars).AppendLine();
-            stringBuilder.AppendFormat("┃ {0} ┃ {1} ┃ {2} ┃ {3} ┃ {4} ┃", HEADERS[0].PadRight(NameLength), HEADERS[1].PadRight(priceLength), HEADERS[2].PadRight(statusLength), HEADERS[3].PadRight(allocationDueLength), HEADERS[4].PadRight(streetDateLength)).AppendLine();
+            stringBuilder.AppendFormat("┃ {0} ┃ {1} ┃ {2} ┃ {3} ┃ {4} ┃", HEADERS[0].PadRight(nameLength), HEADERS[1].PadRight(priceLength), HEADERS[2].PadRight(statusLength), HEADERS[3].PadRight(allocationDueLength), HEADERS[4].PadRight(streetDateLength)).AppendLine();
             stringBuilder.AppendFormat("┣{0}╋{1}╋{2}╋{3}╋{4}┫", NameBars, priceBars, statusBars, allocationDueBars, streetDateBars).AppendLine();
             foreach (ProductRecord products in productList)
             {
                 PokemartUSABot.Logger.LogDebug(products.ToString());
-                stringBuilder.AppendFormat("┃ {0} ┃ {1} ┃ {2} ┃ {3} ┃ {4} ┃", products.Name.PadRight(NameLength), products.Price.PadRight(priceLength), products.Status.PadRight(statusLength), products.AllocationDue.PadRight(allocationDueLength), products.StreetDate.PadRight(streetDateLength)).AppendLine();
+                stringBuilder.AppendFormat("┃ {0} ┃ {1} ┃ {2} ┃ {3} ┃ {4} ┃", products.Name.PadRight(nameLength), products.Price.PadRight(priceLength), products.Status.PadRight(statusLength), products.AllocationDue.PadRight(allocationDueLength), products.StreetDate.PadRight(streetDateLength)).AppendLine();
             }
             stringBuilder.AppendFormat("┗{0}┻{1}┻{2}┻{3}┻{4}┛", NameBars, priceBars, statusBars, allocationDueBars, streetDateBars);
 
