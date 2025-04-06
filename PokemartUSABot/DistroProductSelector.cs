@@ -1,6 +1,5 @@
 ﻿using System.Globalization;
 using System.Text;
-using System.Text.RegularExpressions;
 using CsvHelper;
 using Microsoft.Extensions.Logging;
 using PokemartUSABot.Models;
@@ -9,7 +8,7 @@ namespace PokemartUSABot
 {
     internal static class DistroProductSelector
     {
-        public static List<string> HEADERS { get; private set; } = [ "Product Name", "Price", "Status", "Allocation Due", "Street Date" ];
+        public static List<string> HEADERS { get; private set; } = [ "Product Name", "Price", "Status", "Allocation Due Date", "Street Date", "Last Updated Date" ];
         public static string[] BANDAI_IPS { get; private set; } = ["Bandai", "Dragon Ball Super", "Dragon Ball", "Digimon", "One Piece", "Union Arena", "Gundam"];
 
         public static string GetSheetUri(string ip, string lang, long distro)
@@ -194,7 +193,11 @@ namespace PokemartUSABot
             }
             else if (ip.Equals("Item Request"))
             {
+                sheetUrl = "https://docs.google.com/spreadsheets/d/1Qj9aV8ae0MJ7MlBLIqYVh55B8_Ydprryy9zDwNoRJyU/export?format=csv";
                 sheetGid = 1689199249;
+                startColumn = "A";
+                endColumn = "G";
+                sheetRange = $"{startColumn}1:{endColumn}&tq=SELECT%20*";
             }
             else if (ip.Equals("Supplies"))
             {
@@ -203,7 +206,7 @@ namespace PokemartUSABot
             return IsPokemon ? $"{sheetUrl}&range={sheetRange}" : $"{sheetUrl}&gid={sheetGid}&range={sheetRange}";
         }
 
-        public static async Task<IEnumerable<ProductRecord>> FetchProductsAsync(string uri, string ip, long distro)
+        public static async Task<IEnumerable<object>> FetchProductsAsync(string uri, string ip, long distro)
         {
             PokemartUSABot.Logger.LogDebug($"Requesting: {uri}");
 
@@ -214,25 +217,42 @@ namespace PokemartUSABot
             }
             else
             {
-                using CsvReader csv = new CsvReader(new StreamReader(response), CultureInfo.InvariantCulture);
-                csv.Context.RegisterClassMap<ProductRecordMap>();
-                IEnumerable<ProductRecord> result = [.. csv.GetRecords<ProductRecord>()];
-
-                // Remove blanks
-                result = result.Where(r => !string.IsNullOrWhiteSpace(r.Name));
-
-                // Filter Bandai sub-IP products
-                if (BANDAI_IPS.Contains(ip))
+                if (ip.Equals("Item Request"))
                 {
-                    result = result.Where(r => r.Name.Contains(ip, StringComparison.OrdinalIgnoreCase));
-                }
+                    using CsvReader csv = new CsvReader(new StreamReader(response), CultureInfo.InvariantCulture);
+                    csv.Context.RegisterClassMap<ItemRequestProductRecordMap>();
+                    IEnumerable<ItemRequestProductRecord> result = [.. csv.GetRecords<ItemRequestProductRecord>()];
 
-                if (!result.Any())
+                    // Remove blanks & invalid distro
+                    result = result.Where(r => r.DistroNumber == distro);
+
+                    if (!result.Any())
+                    {
+                        throw new DistroConfigurationException($"No product found for '{ip}' at Distro #{distro}");
+                    }
+                    return result;
+                }
+                else
                 {
-                    throw new DistroConfigurationException($"No product found for '{ip}' at Distro #{distro}");
-                }
+                    using CsvReader csv = new CsvReader(new StreamReader(response), CultureInfo.InvariantCulture);
+                    csv.Context.RegisterClassMap<ProductRecordMap>();
+                    IEnumerable<ProductRecord> result = [.. csv.GetRecords<ProductRecord>()];
 
-                return result;
+                    // Remove blanks
+                    result = result.Where(r => !string.IsNullOrWhiteSpace(r.Name));
+
+                    // Filter Bandai sub-IP products
+                    if (BANDAI_IPS.Contains(ip))
+                    {
+                        result = result.Where(r => r.Name.Contains(ip, StringComparison.OrdinalIgnoreCase));
+                    }
+
+                    if (!result.Any())
+                    {
+                        throw new DistroConfigurationException($"No product found for '{ip}' at Distro #{distro}");
+                    }
+                    return result;
+                }
             }
         }
 
@@ -260,9 +280,41 @@ namespace PokemartUSABot
             foreach (ProductRecord products in productList)
             {
                 PokemartUSABot.Logger.LogDebug(products.ToString());
-                stringBuilder.AppendFormat("┃ {0} ┃ {1} ┃ {2} ┃ {3} ┃ {4} ┃", products.Name.PadRight(nameLength), products.Price.PadRight(priceLength), products.Status.PadRight(statusLength), products.AllocationDue.PadRight(allocationDueLength), products.StreetDate.PadRight(streetDateLength)).AppendLine();
+                stringBuilder.AppendFormat("┃ {0} ┃ {1} ┃ {2} ┃ {3} ┃ {4} ┃", products.Name.PadRight(nameLength), products.Price.PadRight(priceLength), products.Status.PadRight(statusLength), products.AllocationDueDate.PadRight(allocationDueLength), products.StreetDate.PadRight(streetDateLength)).AppendLine();
             }
             stringBuilder.AppendFormat("┗{0}┻{1}┻{2}┻{3}┻{4}┛", NameBars, priceBars, statusBars, allocationDueBars, streetDateBars);
+
+            return stringBuilder.ToString();
+        }
+
+        public static string GetResultsAsAsciiTable(IEnumerable<ItemRequestProductRecord> productList)
+        {
+            int nameLength = HEADERS[0].Length, priceLength = HEADERS[1].Length, statusLength = HEADERS[2].Length, allocationDueLength = HEADERS[3].Length, streetDateLength = HEADERS[4].Length, lastUpdatedLength = HEADERS[5].Length;
+
+            foreach (ItemRequestProductRecord result in productList)
+            {
+                nameLength = Math.Max(nameLength, result.Name.Length);
+                priceLength = Math.Max(priceLength, result.Price.Length);
+                statusLength = Math.Max(statusLength, result.Status.Length);
+            }
+            string NameBars = "━".PadRight(nameLength + 2, '━');
+            string priceBars = "━".PadRight(priceLength + 2, '━');
+            string statusBars = "━".PadRight(statusLength + 2, '━');
+            string allocationDueBars = "━".PadRight(allocationDueLength + 2, '━');
+            string streetDateBars = "━".PadRight(streetDateLength + 2, '━');
+            string lastUpdatedBars = "━".PadRight(lastUpdatedLength + 2, '━');
+
+            StringBuilder stringBuilder = new StringBuilder();
+
+            stringBuilder.AppendFormat("┏{0}┳{1}┳{2}┳{3}┳{4}┳{5}┓", NameBars, priceBars, statusBars, allocationDueBars, streetDateBars, lastUpdatedBars).AppendLine();
+            stringBuilder.AppendFormat("┃ {0} ┃ {1} ┃ {2} ┃ {3} ┃ {4} ┃ {5} ┃", HEADERS[0].PadRight(nameLength), HEADERS[1].PadRight(priceLength), HEADERS[2].PadRight(statusLength), HEADERS[3].PadRight(allocationDueLength), HEADERS[4].PadRight(streetDateLength), HEADERS[5].PadRight(lastUpdatedLength)).AppendLine();
+            stringBuilder.AppendFormat("┣{0}╋{1}╋{2}╋{3}╋{4}╋{5}┫", NameBars, priceBars, statusBars, allocationDueBars, streetDateBars, lastUpdatedBars).AppendLine();
+            foreach (ItemRequestProductRecord products in productList)
+            {
+                PokemartUSABot.Logger.LogDebug(products.ToString());
+                stringBuilder.AppendFormat("┃ {0} ┃ {1} ┃ {2} ┃ {3} ┃ {4} ┃ {5} ┃", products.Name.PadRight(nameLength), products.Price.PadRight(priceLength), products.Status.PadRight(statusLength), products.AllocationDueDate.PadRight(allocationDueLength), products.StreetDate.PadRight(streetDateLength), products.LastUpdatedDate.PadRight(lastUpdatedLength)).AppendLine();
+            }
+            stringBuilder.AppendFormat("┗{0}┻{1}┻{2}┻{3}┻{4}┻{5}┛", NameBars, priceBars, statusBars, allocationDueBars, streetDateBars, lastUpdatedBars);
 
             return stringBuilder.ToString();
         }

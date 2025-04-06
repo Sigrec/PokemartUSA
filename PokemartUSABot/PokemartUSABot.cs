@@ -98,6 +98,9 @@ namespace PokemartUSABot
             }.WithFooter(PokemartUSABot.NAME, PokemartUSABot.Client.CurrentUser.AvatarUrl)
              .WithThumbnail(PokemartUSABot.Client.CurrentUser.AvatarUrl)
              .AddField("FAQ", "[Google Doc](<https://docs.google.com/document/d/1K3hmfo1EzLazjQz2-_zFdsqjz-NQnz7POPyAORxO_Wo/edit?tab=t.0#heading=h.45c7ytkyi1ft>)")
+             .AddField("Reselling Guides",
+             "[Reselling Guide Part 1](<https://docs.google.com/document/d/1dn2_5Th4TG-WAh9EL_D_BYBtd9-vIcox2Ih6bNUuFdw/edit>)\n" +
+             "[Reselling Guide Part 2](<https://docs.google.com/document/d/1Oxw2iCtMSjOLkMG2wEMdH-Vu-OvrcS3rdhWnwa8x2mg/edit>)")
              .AddField("Commands",
              $"**/{NAME.ToLower()} product** - Outputs the list of products for a given IP at a specific distro\n" +
              $"**/{NAME.ToLower()} distro** - Outputs the list of distros currently supported by the wholesale program\n" +
@@ -112,18 +115,20 @@ namespace PokemartUSABot
 
             DistroEmbed = new DiscordEmbedBuilder
             {
+                Title = "Distro",
                 Description = 
-                "**Distro #1 - [Southern Hobby](<https://www.southernhobby.com/>)**\n" +
-                "**Distro #2 - [Magazine Exchange](<https://magazine-exchange.com/>)**\n" +
-                "**Distro #3 - [PHD Games](<https://portal.phdgames.com/products?p=preordersdue&page=1&size=20>)**\n" +
-                "**Distro #4 - [Madal](<https://madal.com/>)**\n" +
-                "**Distro #5 - [GTS Distribution](<https://www.gtsdistribution.com/>)**",
+                "**#1 - [Southern Hobby](<https://www.southernhobby.com/>)**\n" +
+                "**#2 - [Magazine Exchange](<https://magazine-exchange.com/>)**\n" +
+                "**#3 - [PHD Games](<https://portal.phdgames.com/products?p=preordersdue&page=1&size=20>)**\n" +
+                "**#4 - [Madal](<https://madal.com/>)**\n" +
+                "**#5 - [GTS Distribution](<https://www.gtsdistribution.com/>)**",
                 Color = PokemartUSABot.COLOR,
                 Timestamp = DateTimeOffset.UtcNow
             }.WithFooter(PokemartUSABot.NAME, PokemartUSABot.Client.CurrentUser.AvatarUrl);
 
             SheetsEmbed = new DiscordEmbedBuilder
             {
+                Title = "Spreadsheets",
                 Description =
                 "**[Master Tracking Sheet](<https://docs.google.com/spreadsheets/d/1fWKRk_1i69rFE2ytxEmiAlHqYrPXVmhXSbG3fgGsl_I/edit?gid=1962881622#gid=1962881622>)**\n" +
                 "**[Pokémon Allocation Sheet](<https://docs.google.com/spreadsheets/d/1AnnzLYz1ktCLm0-Mt5o-6p4T8AqE0r2gewv-osqrK0A/edit?gid=0#gid=0>)**\n" +

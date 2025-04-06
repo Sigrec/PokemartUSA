@@ -31,7 +31,7 @@ namespace PokemartUSABot
         [SlashCooldown(1, 5, SlashCooldownBucketType.User)]
         public async Task ListPokemartUSADistroProductCommand(
             InteractionContext ctx,
-            [Option("ip", "Select IP")]
+            [Option("IP", "Select IP")]
             [Choice("Bandai", "Bandai")]
             [Choice("Dragon Ball", "Dragon Ball")]
             [Choice("Digimon", "Digimon")]
@@ -39,6 +39,7 @@ namespace PokemartUSABot
             [Choice("Grand Archive", "Grand Archive")]
             [Choice("Gundam", "Gundam")]
             [Choice("holoLive", "holoLive")]
+            [Choice("Item Request", "Item Request")]
             [Choice("Lorcana", "Lorcana")]
             [Choice("Magic The Gathering", "Magic The Gathering")]
             [Choice("One Piece", "One Piece")]
@@ -57,11 +58,22 @@ namespace PokemartUSABot
             [Choice("GTS Distribution (Distro #5)", 5)] long distro)
         {
             await ctx.DeferAsync();
-            IEnumerable<ProductRecord> productList = await DistroProductSelector.FetchProductsAsync(DistroProductSelector.GetSheetUri(ip, "English", distro), ip, distro);
+            string results;
+            IEnumerable<object> resultList = await DistroProductSelector.FetchProductsAsync(DistroProductSelector.GetSheetUri(ip, "English", distro), ip, distro);
+            if (!ip.Equals("Item Request"))
+            {
+                IEnumerable<ProductRecord> productList = (IEnumerable<ProductRecord>) resultList;
+                results = DistroProductSelector.GetResultsAsAsciiTable(productList);
+            }
+            else
+            {
+                IEnumerable<ItemRequestProductRecord> productList = (IEnumerable<ItemRequestProductRecord>)resultList;
+                results = DistroProductSelector.GetResultsAsAsciiTable(productList);
+            }
 
             DiscordMessageBuilder resultMessage = new DiscordMessageBuilder()
-                            .WithContent($">>> **Distro #{distro} {ip} Product**")
-                            .AddFile("Results.txt", new MemoryStream(Encoding.UTF8.GetBytes(DistroProductSelector.GetResultsAsAsciiTable(productList))));
+                .WithContent($">>> **Distro #{distro} {ip} Product**")
+                .AddFile("Results.txt", new MemoryStream(Encoding.UTF8.GetBytes(results)));
 
             await ctx.EditResponseAsync(
                 new DiscordWebhookBuilder(resultMessage));
