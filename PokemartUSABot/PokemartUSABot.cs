@@ -5,12 +5,25 @@ using DSharpPlus.Interactivity.Extensions;
 using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
 using DSharpPlus.SlashCommands.EventArgs;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Mvc.Controllers;
+using Microsoft.AspNetCore.Routing;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PokemartUSABot.Config;
+using PokemartUSABot.Controllers;
+using PokemartUSABot.Extensions;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace PokemartUSABot
 {
+    [JsonSerializable(typeof(GoogleSheetsPayload))]
+    [JsonSourceGenerationOptions(UseStringEnumConverter = true)]
+    internal partial class BotJsonSerializerContext : JsonSerializerContext
+    {
+    }
+
     internal class PokemartUSABot
     {
         internal static DiscordEmbedBuilder? CrashEmbed;
@@ -25,13 +38,16 @@ namespace PokemartUSABot
         internal const string NAME = "PokemartUSA";
         internal static readonly DiscordColor COLOR = new DiscordColor("#FEC634");
         internal static ILogger<BaseDiscordClient> Logger { get; private set; }
+        internal static DiscordGuild? Guild { get; private set; }
+        internal static IReadOnlyCollection<DiscordMember>? GuildMembers { get; set; }
 
-        static async Task Main()
+        static async Task Main(string[] args)
         {
             // Configure and start the bot
             await using FileStream stream = File.OpenRead(@"Config/config.json");
             PokemartUSABotConfig = await JsonSerializer.DeserializeAsync(stream, PokemartUSABotConfigContext.Default.PokemartUSABotConfig);
-            await StartPokemartUSABotClient();
+
+            await Task.WhenAll(StartPokemartUSABotClient(), SetupApp(args));
         }
 
         private static async Task StartPokemartUSABotClient()
@@ -59,14 +75,62 @@ namespace PokemartUSABot
                 Timeout = TimeSpan.FromSeconds(60)
             });
 
-            var Command = Client.UseSlashCommands();
+            Client.Ready += async (sender, e) =>
+            {
+#if DEBUG
+                Guild = await GetGuildById(1211706746586796104);
+#else
+                Guild = await GetGuildById();
+#endif
+                GuildMembers = await DiscordExtensions.GetGuildMembersAsync();
+            };
+
+            SlashCommandsExtension Command = Client.UseSlashCommands();
             Command.RegisterCommands<PokemartUSABotCommands>();
-            Command.SlashCommandErrored += async (s, e) => { await OnErrorOccured(s, e); };
+            Command.SlashCommandErrored += OnErrorOccured;
 
 
             await Client.ConnectAsync();
             CreateEmbeds();
             await Task.Delay(-1);
+        }
+
+        public static async Task SetupApp(string[] args)
+        {
+            WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
+
+            // Configure services
+            builder.Services.AddControllers().AddJsonOptions(options =>
+            {
+                options.JsonSerializerOptions.TypeInfoResolver = BotJsonSerializerContext.Default;
+                options.JsonSerializerOptions.WriteIndented = true;
+            });
+
+            builder.Logging.ClearProviders();
+            builder.Logging.AddConsole();
+
+            WebApplication app = builder.Build();
+
+            // Configure middleware
+            app.UseRouting();
+            app.MapControllers();
+
+            await app.RunAsync();
+        }
+
+        private static async Task<DiscordGuild?> GetGuildById(ulong guildId)
+        {
+            // Iterate over all the guilds the bot is part of
+            DiscordGuild? guild = await Client.GetGuildAsync(guildId);
+
+            if (guild != null)
+            {
+                Logger.LogInformation("The bot is connected to the server: {guildName} (Guild ID: {guildId})", guild.Name, guild.Id);
+                return guild;
+            }
+
+            Logger.LogError("The bot is not connected to server with id '{id}'.", guildId);
+            return guild;
         }
 
         private static void CreateEmbeds()

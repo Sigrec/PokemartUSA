@@ -28,7 +28,7 @@ namespace PokemartUSABot
         //}
 
         [SlashCommand("product", "Get current list of products for a given IP and distro")]
-        [SlashCooldown(1, 5, SlashCooldownBucketType.User)]
+        [SlashCooldown(1, 10, SlashCooldownBucketType.User)]
         public async Task ListPokemartUSADistroProductCommand(
             InteractionContext ctx,
             [Option("IP", "Select IP")]
@@ -77,6 +77,30 @@ namespace PokemartUSABot
 
             await ctx.EditResponseAsync(
                 new DiscordWebhookBuilder(resultMessage));
+        }
+
+        [SlashCommand("clean", "Deletes up to 100 recent messages sent by the bot")]
+        [SlashCooldown(1, 5, SlashCooldownBucketType.User)]
+        public async Task CleanupBotMessagesAsync(InteractionContext ctx,
+        [Option("count", "Number of bot messages to delete (max 100, default 10)")] long count = 10)
+        {
+            await ctx.DeferAsync(ephemeral: true);
+
+            int deleteCount = (int)Math.Clamp(count, 1, 100);
+            IReadOnlyList<DiscordMessage> messages = await ctx.Channel.GetMessagesAsync(100);
+
+            IEnumerable<DiscordMessage> botMessages = messages
+                .Where((DiscordMessage m) => m.Author.Id == ctx.Client.CurrentUser.Id)
+                .Take(deleteCount);
+            int msgCount = botMessages.Count();
+
+            foreach (DiscordMessage message in botMessages)
+            {
+                await message.DeleteAsync();
+            }
+
+            await ctx.EditResponseAsync(new DiscordWebhookBuilder()
+                .WithContent($"🧹 Deleted {msgCount} bot message{(msgCount != 1 ? "s" : string.Empty)}."));
         }
 
         [SlashCommand("distro", "List current distros supported in the program and their links")]
