@@ -6,13 +6,11 @@ using DSharpPlus.SlashCommands;
 using DSharpPlus.SlashCommands.Attributes;
 using DSharpPlus.SlashCommands.EventArgs;
 using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Mvc.Controllers;
-using Microsoft.AspNetCore.Routing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using PokemartUSABot.Config;
-using PokemartUSABot.Controllers;
 using PokemartUSABot.Extensions;
+using PokemartUSABot.Models;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -131,6 +129,32 @@ namespace PokemartUSABot
 
             Logger.LogError("The bot is not connected to server with id '{id}'.", guildId);
             return guild;
+        }
+
+        public static DiscordEmbedBuilder CreateOrderDm(string title, GoogleSheetsPayload payload, string? reason = null)
+        {
+            string doubleBoxed = payload.Data["Double Boxed?"];
+            string notes = payload.Data["Notes"];
+            DiscordEmbedBuilder orderEmbed = new DiscordEmbedBuilder
+            {
+                Title = title,
+                Description = $"{(reason != null ? reason : string.Empty)}",
+                Color = PokemartUSABot.COLOR,
+                Timestamp = DateTimeOffset.UtcNow
+            }.WithFooter(PokemartUSABot.NAME, PokemartUSABot.Client.CurrentUser.AvatarUrl)
+            .AddField("Details", $@"
+                        **Order Date:** {payload.Data["Order Date"]}
+                        **Distro:** {payload.Data["Distro Number"]}
+                        **Distro Availability:** {payload.Data["Distro Availability"]}
+                        **Product:** {payload.Data["Product Requested"]}
+                        **Price Each:** ${payload.Data["Price Each"]}
+                        **Qty Requested:** {payload.Data["Qty Req"]}
+                        **Ship Method:** {payload.Data["Ship Method"]}
+                        **Double Boxed:** {(string.IsNullOrWhiteSpace(doubleBoxed) ? "Yes" : "No")}
+                        **Total Cost:** ${payload.Data["Total Cost"]}
+                        {(string.IsNullOrWhiteSpace(notes) ? string.Empty : $"**Notes:** {payload.Data["Notes"]}")}");
+
+            return orderEmbed;
         }
 
         private static void CreateEmbeds()

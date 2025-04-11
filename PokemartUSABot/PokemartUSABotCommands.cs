@@ -100,7 +100,7 @@ namespace PokemartUSABot
             }
 
             await ctx.EditResponseAsync(new DiscordWebhookBuilder()
-                .WithContent($"🧹 Deleted {msgCount} bot message{(msgCount != 1 ? "s" : string.Empty)}."));
+                .WithContent($"🧹 Deleted {msgCount} bot message{(msgCount != 1 ? "s" : string.Empty)}"));
         }
 
         [SlashCommand("distro", "List current distros supported in the program and their links")]
